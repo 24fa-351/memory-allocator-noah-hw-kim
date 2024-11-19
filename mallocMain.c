@@ -23,6 +23,9 @@ int main(int argc, char* argv[]) {
 
    char* ptr;
    ptr = (char*)malloc(3 * strlen(str) + 1);
+
+   printf("Memory block size: %ld\n", sizeof(str));
+
    strcpy(ptr, str);
    strcat(ptr, str);
    strcat(ptr, str);
