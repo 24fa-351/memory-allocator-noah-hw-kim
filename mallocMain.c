@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
    char str[] = "abc";
 
    char* ptr;
-   ptr = (char*)malloc(3 * strlen(str) + 1);
+   ptr = (char*)xmalloc(3 * strlen(str) + 1);
 
    printf("Memory block size: %ld\n", sizeof(str));
 
@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
    strcat(ptr, str);
    printf("Length of string: %d\n", strlen2(ptr));
 
-   free(ptr);
+   xfree(ptr);
 
    // ptr = (char*)realloc(ptr, 4 * strlen(str) + 1);
    // strcat(ptr, str);

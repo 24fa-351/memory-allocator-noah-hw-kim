@@ -1,18 +1,28 @@
-#include "customMalloc.h"
+#include "malloc.h"
 
 // keeps track of the free blocks
 MemoryBlock free_list[MAX_SIZE];
 int current_index = 0;
 
-void* malloc(size_t size) {
+void* xmalloc(size_t size) {
    if (size == 0) {
       return NULL;
    }
 
+   fprintf(stderr, "Requested size from user: %ld\n", size);
+
    MemoryBlock* memory_block_ptr = find_block_from_free_list(free_list, size);
    if (memory_block_ptr == NULL) {
+      fprintf(stderr, "Memory block not found in free list.\n");
       memory_block_ptr = get_me_blocks(size);
+      // fprintf(stderr, "We got memory block size from system: %ld\n",
+      //         memory_block_ptr->size);
    }
+   // else {
+   //    fprintf(stderr, "Memory block found in free list.\n");
+   //    fprintf(stderr, "Found memory block size: %ld\n",
+   //    memory_block_ptr->size);
+   // }
 
    memory_block_ptr = break_block(free_list, memory_block_ptr, size);
 
@@ -21,7 +31,7 @@ void* malloc(size_t size) {
       return NULL;
    }
 
-   fprintf(stderr, "Memory block size: %ld\n", memory_block_ptr->size);
+   print_free_list(free_list);
 
    return (void*)(memory_block_ptr);
 }
@@ -33,18 +43,32 @@ MemoryBlock* find_block_from_free_list(MemoryBlock* free_list_arr_ptr,
                                        size_t size) {
    for (int idx = 0; idx < current_index; idx++) {
       if (free_list_arr_ptr[idx].size >= size) {
-         MemoryBlock* removed_block_ptr =
+         fprintf(stderr, "Found block at index: %d\n", idx);
+         fprintf(stderr, "Block size: %ld\n", free_list_arr_ptr[idx].size);
+         MemoryBlock removed_block =
              remove_block_from_free_list(free_list_arr_ptr, idx);
-         return removed_block_ptr;
+
+         if (removed_block.size == 0) {
+            fprintf(stderr, "Error: Removed block size is 0!\n");
+            return NULL;
+         }
+
+         // fprintf(stderr, "Removed block size: %ld\n",
+         // removed_block_ptr->size);
+         return &removed_block;
       }
    }
    return NULL;
 }
 
-MemoryBlock* get_me_blocks(__ssize_t how_much) {
-   __ssize_t required_size = (how_much + ONE_GB - 1) & ~(ONE_GB - 1);
+MemoryBlock* get_me_blocks(size_t how_much) {
+   size_t required_size = how_much + PADDING_SIZE;
 
-   void* ptr = sbrk(required_size);
+   if (required_size < MIN_REQUEST_SIZE) {
+      required_size = MIN_REQUEST_SIZE;
+   }
+
+   void* ptr = sbrk(required_size + PADDING_SIZE);
    if (ptr == (void*)-1) {
       perror("sbrk failed");
       return NULL;
@@ -56,14 +80,16 @@ MemoryBlock* get_me_blocks(__ssize_t how_much) {
    return memory_block_ptr;
 }
 
-MemoryBlock* remove_block_from_free_list(MemoryBlock* free_list_arr_ptr,
-                                         int idx) {
+MemoryBlock remove_block_from_free_list(MemoryBlock* free_list_arr_ptr,
+                                        int idx) {
    if (idx < 0 || idx >= current_index) {
       fprintf(stderr, "Index out of bounds.\n");
-      return NULL;
+      return (MemoryBlock){0};
    }
 
-   MemoryBlock* removed_memory_block_ptr = &free_list_arr_ptr[idx];
+   MemoryBlock removed_memory_block = free_list_arr_ptr[idx];
+   fprintf(stderr, "Removed block size before overwrite array: %ld\n",
+           removed_memory_block.size);
 
    for (int i = idx; i < current_index - 1; i++) {
       free_list_arr_ptr[i] = free_list_arr_ptr[i + 1];
@@ -71,7 +97,10 @@ MemoryBlock* remove_block_from_free_list(MemoryBlock* free_list_arr_ptr,
 
    current_index--;
 
-   return removed_memory_block_ptr;
+   fprintf(stderr, "Removed block size after overwrite array: %ld\n",
+           removed_memory_block.size);
+
+   return removed_memory_block;
 }
 
 MemoryBlock* break_block(MemoryBlock* free_list_arr_ptr,
@@ -108,7 +137,7 @@ void add_block_to_free_list(MemoryBlock* free_list, MemoryBlock* ptr) {
    }
 }
 
-void free(void* ptr) {
+void xfree(void* ptr) {
    if (ptr == NULL) {
       return;
    }
@@ -116,6 +145,8 @@ void free(void* ptr) {
    MemoryBlock* memory_block_ptr = (MemoryBlock*)ptr;
 
    add_block_to_free_list(free_list, ptr);
+
+   print_free_list(free_list);
 }
 
 void print_free_list(void* free_list) {
