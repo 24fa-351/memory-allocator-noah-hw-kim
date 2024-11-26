@@ -39,7 +39,38 @@ void *xmalloc(size_t size)
    return (void *)(memory_block_ptr->ptr_to_start);
 }
 
-void *realloc(void *ptr, size_t size);
+void *xrealloc(void *ptr, size_t size)
+{
+   if (ptr == NULL)
+   {
+      return xmalloc(size);
+   }
+
+   if (size == 0)
+   {
+      xfree(ptr);
+      return NULL;
+   }
+
+   MemoryBlock *memory_block_ptr = (MemoryBlock *)((char *)ptr - sizeof(MemoryBlock));
+
+   if (memory_block_ptr->size >= size)
+   {
+      return ptr;
+   }
+
+   void *new_ptr = xmalloc(size);
+   if (new_ptr == NULL)
+   {
+      return NULL;
+   }
+
+   memcpy(new_ptr, ptr, memory_block_ptr->size);
+   xfree(ptr);
+
+   return new_ptr;
+};
+
 void *calloc(size_t num, size_t size);
 
 MemoryBlock *find_block_from_free_list(size_t size)

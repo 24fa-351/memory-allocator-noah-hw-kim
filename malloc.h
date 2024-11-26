@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #define MAX_SIZE 1000
 #define ONE_HUNDRED_MB 100 * 1024 * 1024
