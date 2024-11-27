@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "malloc.h": "c"
+        "malloc.h": "c",
+        "type_traits": "c",
+        "climits": "c",
+        "limits.h": "c"
     }
 }

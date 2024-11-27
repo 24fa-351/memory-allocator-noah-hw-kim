@@ -35,6 +35,8 @@ int main(int argc, char *argv[])
    for (int ix = 0; ix < TEST_SIZE; ix++)
    {
       int size = rand_between(1, strlen(test_string) + 1);
+      // large random nums
+
       fprintf(stderr, "\n\n\n[%d] size: %d\n", ix, size);
 
       ptrs[ix] = xmalloc(size);
@@ -43,6 +45,8 @@ int main(int argc, char *argv[])
          printf("[%d] malloc failed\n", ix);
          exit(1);
       }
+
+      //
 
       int len_to_copy = MIN(strlen(test_string), size - 1);
 
@@ -55,6 +59,9 @@ int main(int argc, char *argv[])
       fprintf(stderr, "[%x] '%s'\n", ix, ptrs[ix]);
 
       int index_to_free = 0; // rand_between(0, ix);
+
+      // sometimes reallocate
+
       // fprintf(stderr, "[%x] '%s'\n", ix, ptrs[ix]);
       if (ptrs[index_to_free])
       {

@@ -34,8 +34,17 @@ MemoryBlock *get_me_blocks(size_t how_much);
 MemoryBlock *break_block(MemoryBlock *memory_block_ptr, size_t size);
 void add_block_to_free_list(MemoryBlock *memory_block_ptr);
 MemoryBlock *remove_block_from_free_list(int idx);
-
 void xfree(void *ptr);
 void print_free_list();
+
+// heap structure
+void heap_insert(MemoryBlock *ptr);
+MemoryBlock *heap_remove(int idx);
+void heap_bubble_up(int index);
+void heap_bubble_down(int index);
+unsigned int heap_parent(unsigned int index);
+unsigned int heap_left_child(unsigned int index);
+unsigned int heap_right_child(unsigned int index);
+void heap_swap(int idx1, int idx2);
 
 #endif
