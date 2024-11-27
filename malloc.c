@@ -1,8 +1,8 @@
 #include "malloc.h"
 
 // keeps track of the free blocks
-MemoryBlock *free_list[MAX_SIZE];
-int cur_idx = 0;
+MemoryBlock *free_list[MAX_HEAP_SIZE];
+int heap_size = 0;
 
 void *xmalloc(size_t size)
 {
@@ -12,6 +12,11 @@ void *xmalloc(size_t size)
    }
 
    // fprintf(stderr, "Requested size from user: %ld\n", size);
+
+   if (size < MIN_BLOCK_SIZE)
+   {
+      size = MIN_BLOCK_SIZE;
+   }
 
    MemoryBlock *memory_block_ptr = (MemoryBlock *)find_block_from_free_list(size);
    if (memory_block_ptr == NULL)
@@ -44,12 +49,6 @@ void *xrealloc(void *ptr, size_t size)
       return xmalloc(size);
    }
 
-   if (size == 0)
-   {
-      xfree(ptr);
-      return NULL;
-   }
-
    MemoryBlock *memory_block_ptr = (MemoryBlock *)((char *)ptr - sizeof(MemoryBlock));
 
    if (memory_block_ptr->size >= size)
@@ -67,19 +66,29 @@ void *xrealloc(void *ptr, size_t size)
    xfree(ptr);
 
    return new_ptr;
-};
+}
 
-void *calloc(size_t num, size_t size);
+void *xcalloc(size_t num, size_t size)
+{
+   size_t total_size = num * size;
+   void *ptr = xmalloc(total_size);
+   if (ptr == NULL)
+   {
+      return NULL;
+   }
+   memset(ptr, 0, total_size);
+   return ptr;
+}
 
 MemoryBlock *find_block_from_free_list(size_t size)
 {
-   for (int idx = 0; idx < cur_idx; idx++)
+   for (int idx = 0; idx < heap_size; idx++)
    {
       if (free_list[idx]->size >= size)
       {
          fprintf(stderr, "Found block at index: %d, size: %ld, address: %p, address_start: %p\n", idx, free_list[idx]->size, free_list[idx], free_list[idx]->ptr_to_start);
          // fprintf(stderr, "Block size: %ld\n", free_list[idx].size);
-         MemoryBlock *removed_block_ptr = remove_block_from_free_list(idx);
+         MemoryBlock *removed_block_ptr = heap_remove(idx);
          // MemoryBlock *removed_block_ptr = &removed_block;
 
          if (removed_block_ptr->size == 0)
@@ -102,7 +111,7 @@ MemoryBlock *get_me_blocks(size_t how_much)
 
    if (how_much > ONE_HUNDRED_MB)
    {
-      required_size = (how_much + sizeof(size_t) - 1) & ~(sizeof(size_t) - 1);
+      required_size = (how_much + ALIGNMENT - 1) & ~(ALIGNMENT - 1);
    }
    else
    {
@@ -121,31 +130,6 @@ MemoryBlock *get_me_blocks(size_t how_much)
    memory_block_ptr->ptr_to_start = (char *)block_start_ptr + sizeof(MemoryBlock);
 
    return memory_block_ptr;
-}
-
-MemoryBlock *remove_block_from_free_list(int idx)
-{
-   if (idx < 0 || idx >= cur_idx)
-   {
-      fprintf(stderr, "Index out of bounds.\n");
-      return NULL;
-   }
-
-   MemoryBlock *removed_memory_block = free_list[idx];
-   // fprintf(stderr, "Removed block size before overwrite array: %ld\n",
-   //         removed_memory_block.size);
-
-   for (int i = idx; i < cur_idx - 1; i++)
-   {
-      free_list[i] = free_list[i + 1];
-   }
-
-   cur_idx--;
-
-   // fprintf(stderr, "Removed block size after overwrite array: %ld\n",
-   //         removed_memory_block.size);
-
-   return removed_memory_block;
 }
 
 MemoryBlock *break_block(MemoryBlock *memory_block_ptr, size_t size)
@@ -174,22 +158,9 @@ MemoryBlock *break_block(MemoryBlock *memory_block_ptr, size_t size)
 
    memory_block_ptr->size = size;
 
-   add_block_to_free_list(extra_memory_block_ptr);
+   heap_insert(extra_memory_block_ptr);
 
    return memory_block_ptr;
-}
-
-void add_block_to_free_list(MemoryBlock *ptr)
-{
-   if (cur_idx >= MAX_SIZE)
-   {
-      fprintf(stderr, "Error: Free list is full!\n");
-      return;
-   }
-   // printf("Adding block to free list: %p\n", (void *)ptr);
-   free_list[cur_idx] = ptr;
-   // printf("Added block to free list: %p\n", (void *)free_list[cur_idx]);
-   cur_idx++;
 }
 
 void xfree(void *ptr)
@@ -203,7 +174,7 @@ void xfree(void *ptr)
 
    // printf("Freeing memory block address: %p\n", memory_block_ptr);
 
-   add_block_to_free_list(memory_block_ptr);
+   heap_insert(memory_block_ptr);
 
    print_free_list(free_list);
 }
@@ -211,9 +182,122 @@ void xfree(void *ptr)
 void print_free_list()
 {
    printf("\n=== Free List Starts! ===\n");
-   for (int idx = 0; idx < cur_idx; idx++)
+   for (int idx = 0; idx < heap_size; idx++)
    {
       printf("Block %d: Size - %ld, Address:%p, Address_start: %p\n", idx, free_list[idx]->size, free_list[idx], free_list[idx]->ptr_to_start);
    }
    printf("\n=== Free List Ends! ===\n");
+}
+
+unsigned int heap_parent(unsigned int index)
+{
+   if (index == 0)
+   {
+      return 0;
+   }
+   return (index - 1) / 2;
+}
+
+unsigned int heap_left_child(unsigned int index)
+{
+   return index * 2 + 1;
+}
+
+unsigned int heap_right_child(unsigned int index)
+{
+   return index * 2 + 2;
+}
+
+unsigned int heap_level(unsigned int index)
+{
+   // base
+   if (index == 0)
+   {
+      return 0;
+   }
+   // recursive
+   return heap_level(heap_parent(index)) + 1;
+}
+
+void heap_swap(int index1, int index2)
+{
+   MemoryBlock *tmp = free_list[index1];
+   free_list[index1] = free_list[index2];
+   free_list[index2] = tmp;
+}
+
+void heap_bubble_up(int index)
+{
+   int curVal = free_list[index]->size;
+   unsigned int parentIdx = heap_parent(index);
+   int parentVal = free_list[parentIdx]->size;
+
+   while (index > 0 && parentVal > curVal)
+   {
+      heap_swap(parentIdx, index);
+      index = parentIdx;
+      curVal = free_list[index]->size;
+      parentIdx = heap_parent(index);
+      parentVal = free_list[parentIdx]->size;
+   }
+}
+
+void heap_bubble_down(int index)
+{
+   while (index < heap_size)
+   {
+      unsigned int leftChildIdx = heap_left_child(index);
+      unsigned int rightChildIdx = heap_right_child(index);
+
+      unsigned long long curVal = free_list[index]->size;
+      unsigned long long leftChildVal = (leftChildIdx < heap_size) ? free_list[leftChildIdx]->size : ULLONG_MAX;
+      unsigned long long rightChildVal = (rightChildIdx < heap_size) ? free_list[rightChildIdx]->size : ULLONG_MAX;
+
+      if (curVal <= leftChildVal && curVal <= rightChildVal)
+      {
+         break;
+      }
+
+      if (leftChildVal < rightChildVal)
+      {
+         heap_swap(index, leftChildIdx);
+         index = leftChildIdx;
+      }
+      else
+      {
+         heap_swap(index, rightChildIdx);
+         index = rightChildIdx;
+      }
+   }
+}
+
+void heap_insert(MemoryBlock *ptr)
+{
+   if (heap_size >= MAX_HEAP_SIZE)
+   {
+      fprintf(stderr, "Error: Free list is full!\n");
+      return;
+   }
+
+   free_list[heap_size] = ptr;
+
+   heap_bubble_up(heap_size);
+   heap_size++;
+}
+
+MemoryBlock *heap_remove(int idx)
+{
+   if (heap_size == 0)
+   {
+      return NULL;
+   }
+
+   MemoryBlock *block = free_list[idx];
+   heap_size--;
+   free_list[idx] = free_list[heap_size];
+
+   // then bubble it down to its correct position
+   heap_bubble_down(idx);
+
+   return block;
 }

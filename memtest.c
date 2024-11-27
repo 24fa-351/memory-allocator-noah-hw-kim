@@ -7,15 +7,17 @@
 #ifdef SYSTEM_MALLOC
 #define xfree free
 #define xmalloc malloc
+#define xrealloc realloc
 #else
 #include "malloc.h"
 #endif
 
-int rand_between(int min, int max) { return rand() % (max - min + 1) + min; }
-
 #define TEST_SIZE 5
-
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MIN_LARGE_SIZE 1024
+#define MAX_LARGE_SIZE 100 * 1024 * 1024
+
+int rand_between(int min, int max) { return rand() % (max - min + 1) + min; }
 
 int main(int argc, char *argv[])
 {
@@ -35,7 +37,14 @@ int main(int argc, char *argv[])
    for (int ix = 0; ix < TEST_SIZE; ix++)
    {
       int size = rand_between(1, strlen(test_string) + 1);
-      // large random nums
+
+      // sometimes, allocate a large block
+      int do_occasionally_large = rand_between(0, 1);
+
+      if (do_occasionally_large)
+      {
+         size = rand_between(MIN_LARGE_SIZE, 100 * 1024 * 1024);
+      }
 
       fprintf(stderr, "\n\n\n[%d] size: %d\n", ix, size);
 
@@ -45,8 +54,6 @@ int main(int argc, char *argv[])
          printf("[%d] malloc failed\n", ix);
          exit(1);
       }
-
-      //
 
       int len_to_copy = MIN(strlen(test_string), size - 1);
 
@@ -58,9 +65,23 @@ int main(int argc, char *argv[])
 
       fprintf(stderr, "[%x] '%s'\n", ix, ptrs[ix]);
 
-      int index_to_free = 0; // rand_between(0, ix);
+      int index_to_free = rand_between(0, ix);
 
       // sometimes reallocate
+      int do_realloc = rand_between(0, 1);
+
+      if (do_realloc)
+      {
+         int new_size = rand_between(1, strlen(test_string) + 1);
+         fprintf(stderr, "[%d] reallocating %p to size %d\n", ix, ptrs[ix],
+                 new_size);
+         ptrs[ix] = xrealloc(ptrs[ix], new_size);
+         if (ptrs[ix] == NULL)
+         {
+            printf("[%d] realloc failed\n", ix);
+            exit(1);
+         }
+      }
 
       // fprintf(stderr, "[%x] '%s'\n", ix, ptrs[ix]);
       if (ptrs[index_to_free])
