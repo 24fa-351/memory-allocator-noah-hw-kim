@@ -3,13 +3,14 @@
 #include <string.h>
 #include <time.h>
 
-// define "x" for system malloc, include for our versions. Don't do both.
+// define "SYSTEM_MALLOC" for system malloc, include for our versions. Don't do both.
 #ifdef SYSTEM_MALLOC
-#define xfree free
-#define xmalloc malloc
-#define xrealloc realloc
+// Use standard library functions
 #else
 #include "malloc.h"
+#define malloc xmalloc
+#define realloc xrealloc
+#define free xfree
 #endif
 
 #define TEST_SIZE 5
@@ -48,7 +49,7 @@ int main(int argc, char *argv[])
 
       fprintf(stderr, "\n\n\n[%d] size: %d\n", ix, size);
 
-      ptrs[ix] = xmalloc(size);
+      ptrs[ix] = malloc(size);
       if (ptrs[ix] == NULL)
       {
          printf("[%d] malloc failed\n", ix);
@@ -75,7 +76,7 @@ int main(int argc, char *argv[])
          int new_size = rand_between(1, strlen(test_string) + 1);
          fprintf(stderr, "[%d] reallocating %p to size %d\n", ix, ptrs[ix],
                  new_size);
-         ptrs[ix] = xrealloc(ptrs[ix], new_size);
+         ptrs[ix] = realloc(ptrs[ix], new_size);
          if (ptrs[ix] == NULL)
          {
             printf("[%d] realloc failed\n", ix);
@@ -89,7 +90,7 @@ int main(int argc, char *argv[])
          // fprintf(stderr, "[%x] '%s'\n", ix, ptrs[ix]);
          fprintf(stderr, "\n[%d] randomly freeing %p ('%s')\n", index_to_free,
                  ptrs[index_to_free], ptrs[index_to_free]);
-         xfree(ptrs[index_to_free]);
+         free(ptrs[index_to_free]);
          fprintf(stderr, "[%d] freed %p\n", index_to_free, ptrs[index_to_free]);
          ptrs[index_to_free] = NULL;
       }
@@ -100,7 +101,7 @@ int main(int argc, char *argv[])
       if (ptrs[ix])
       {
          fprintf(stderr, "[%d] freeing %p (%s)\n", ix, ptrs[ix], ptrs[ix]);
-         xfree(ptrs[ix]);
+         free(ptrs[ix]);
          fprintf(stderr, "[%d] freed %p\n", ix, ptrs[ix]);
       }
       else
